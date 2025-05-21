@@ -22,6 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.print.attribute.standard.Media;
 
+import java.math.BigDecimal;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -128,7 +130,7 @@ public class WalletControllerTest {
         doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"))
                 .when(assetService).addAsset(eq(invalidWalletId), any(AddAssetRequest.class));
 
-        String body = objectMapper.writeValueAsString(new AddAssetRequest("ETH", 100.0, 2.0));
+        String body = objectMapper.writeValueAsString(new AddAssetRequest("ETH", new BigDecimal("100.0"), 2.0));
 
         mvc.perform(post("/wallet/{id}/asset", invalidWalletId)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -140,11 +142,12 @@ public class WalletControllerTest {
     @DisplayName("POST /wallet/{id}/asset -> 201 created with location and body")
     void whenAssetWithValidWalletId() throws Exception {
         long id = 1L;
-        AssetResponseDto dto = new AssetResponseDto(5L, "ETH", 1000.0, 5.0);
+        BigDecimal price = new BigDecimal("1000.0");
+        AssetResponseDto dto = new AssetResponseDto(5L, "ETH", price, 5.0);
         when(assetService.addAsset(eq(id), any(AddAssetRequest.class)))
                 .thenReturn(dto);
 
-        String body = objectMapper.writeValueAsString(new AddAssetRequest("ETH", 1000.0, 5.0));
+        String body = objectMapper.writeValueAsString(new AddAssetRequest("ETH", price, 5.0));
 
         mvc.perform(post("/wallet/{id}/asset", id)
                 .contentType(MediaType.APPLICATION_JSON)

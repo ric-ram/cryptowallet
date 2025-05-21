@@ -3,6 +3,7 @@ package com.ricram.cryptowallet.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -21,7 +22,10 @@ public class Asset {
     private String symbol;
 
     @Column(nullable = false)
-    private double price;
+    private String slug;
+
+    @Column(nullable = false, precision = 19, scale = 8)
+    private BigDecimal price;
 
     @Column(nullable = false)
     private double quantity;

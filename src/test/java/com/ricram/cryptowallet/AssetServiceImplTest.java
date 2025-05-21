@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -43,7 +44,7 @@ public class AssetServiceImplTest {
 
         long invalidWalletId = 55L;
         when(walletRepository.findById(invalidWalletId)).thenReturn(Optional.empty());
-        AddAssetRequest req = new AddAssetRequest("btc", 10000.0, 4.0);
+        AddAssetRequest req = new AddAssetRequest("btc", new BigDecimal("10000.0"), 4.0);
 
         ResponseStatusException ex = assertThrows(
                 ResponseStatusException.class,
@@ -74,19 +75,20 @@ public class AssetServiceImplTest {
                     a.setCreateAt(Instant.parse("2025-05-21T12:00:00Z"));
                     return a;
                 });
-        AddAssetRequest req = new AddAssetRequest("eth", 10000.0, 3.0);
+        BigDecimal price = new BigDecimal("10000.0");
+        AddAssetRequest req = new AddAssetRequest("eth", price, 3.0);
 
         AssetResponseDto dto = assetService.addAsset(validWalletId, req);
 
         assertEquals(10L, dto.id());
         assertEquals(dto.symbol(), "ETH");
-        assertEquals(dto.price(), 10000.0);
+        assertEquals(0, dto.price().compareTo(price));
         assertEquals(dto.quantity(), 3.0);
 
         Asset saved = captor.getValue();
         assertEquals(saved.getWallet(), wallet);
         assertEquals(saved.getSymbol(), "ETH");
-        assertEquals(saved.getPrice(), 10000.0);
+        assertEquals(0, saved.getPrice().compareTo(price));
         assertEquals(saved.getQuantity(), 3.0);
         assertNotNull(saved.getCreateAt());
 
