@@ -1,16 +1,16 @@
 package com.ricram.cryptowallet.controller;
 
+import com.ricram.cryptowallet.dto.AddAssetRequest;
+import com.ricram.cryptowallet.dto.AssetResponseDto;
 import com.ricram.cryptowallet.dto.CreateWalletRequest;
 import com.ricram.cryptowallet.dto.WalletResponseDto;
+import com.ricram.cryptowallet.service.AssetService;
 import com.ricram.cryptowallet.service.WalletService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 
@@ -21,12 +21,24 @@ import java.net.URI;
 public class WalletController {
 
     private final WalletService walletService;
+    private final AssetService assetService;
 
     @PostMapping
     public ResponseEntity<WalletResponseDto> createWallet(@Valid @RequestBody CreateWalletRequest req) {
 
         WalletResponseDto dto = walletService.create(req);
         URI location = URI.create("/wallet/" + dto.id());
+
+        return ResponseEntity
+                .created(location)
+                .body(dto);
+    }
+
+    @PostMapping("/{id}/asset")
+    public ResponseEntity<AssetResponseDto> addAssetToWallet(@PathVariable("id") Long walletId, @Valid @RequestBody AddAssetRequest req) {
+
+        AssetResponseDto dto = assetService.addAsset(walletId, req);
+        URI location = URI.create("/wallet/" + walletId + "/asset/" + dto.id());
 
         return ResponseEntity
                 .created(location)

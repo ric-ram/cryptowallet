@@ -10,8 +10,6 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Getter
-@Setter
 @Table(name = "wallet", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
 public class Wallet {
 
