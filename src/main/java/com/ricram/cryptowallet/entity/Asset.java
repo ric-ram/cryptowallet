@@ -3,6 +3,8 @@ package com.ricram.cryptowallet.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
+
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,4 +30,8 @@ public class Asset {
     @JoinColumn(name = "wallet_id", nullable = false)
     @ToString.Exclude @EqualsAndHashCode.Exclude
     private Wallet wallet;
+
+    @Builder.Default
+    @Column(nullable = false, updatable = false)
+    private Instant createAt = Instant.now();
 }
