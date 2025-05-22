@@ -3,9 +3,11 @@ package com.ricram.cryptowallet;
 import com.ricram.cryptowallet.dao.AssetRepository;
 import com.ricram.cryptowallet.dao.WalletRepository;
 import com.ricram.cryptowallet.dto.AddAssetRequest;
+import com.ricram.cryptowallet.dto.AssetInfo;
 import com.ricram.cryptowallet.dto.AssetResponseDto;
 import com.ricram.cryptowallet.entity.Asset;
 import com.ricram.cryptowallet.entity.Wallet;
+import com.ricram.cryptowallet.service.CoinCapService;
 import com.ricram.cryptowallet.service.impl.AssetServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,9 @@ public class AssetServiceImplTest {
     @Mock
     private AssetRepository assetRepository;
 
+    @Mock
+    private CoinCapService coinCapService;
+
     @InjectMocks
     private AssetServiceImpl assetService;
 
@@ -55,17 +60,21 @@ public class AssetServiceImplTest {
         assertTrue(ex.getReason().contains("Wallet not found"));
 
         verify(walletRepository).findById(invalidWalletId);
-        verifyNoMoreInteractions(walletRepository, assetRepository);
+        verifyNoMoreInteractions(walletRepository, assetRepository, coinCapService);
     }
 
     @Test
-    @DisplayName("addAsset() -> Saves asset and returns DTO on success")
-    void addAssetWithValidWalletId() {
+    @DisplayName("addAsset() -> Saves asset and returns DTO on success fetching data from CoinCap")
+    void addAssetWithValidWalletIdAndValidSymbol() {
 
         long validWalletId = 1L;
         Wallet wallet = new Wallet();
         wallet.setId(validWalletId);
         when(walletRepository.findById(validWalletId)).thenReturn(Optional.of(wallet));
+
+        BigDecimal price = new BigDecimal("10000.0");
+        AssetInfo info = new AssetInfo("bitcoin", "BTC", price);
+        when(coinCapService.fetchAsset("btc")).thenReturn(Optional.of(info));
 
         ArgumentCaptor<Asset> captor = ArgumentCaptor.forClass(Asset.class);
         when(assetRepository.save(captor.capture()))
@@ -75,27 +84,50 @@ public class AssetServiceImplTest {
                     a.setCreateAt(Instant.parse("2025-05-21T12:00:00Z"));
                     return a;
                 });
-        BigDecimal price = new BigDecimal("10000.0");
-        AddAssetRequest req = new AddAssetRequest("eth", price, 3.0);
+
+        AddAssetRequest req = new AddAssetRequest("btc", price, 3.0);
 
         AssetResponseDto dto = assetService.addAsset(validWalletId, req);
 
         assertEquals(10L, dto.id());
-        assertEquals(dto.symbol(), "ETH");
+        assertEquals(dto.symbol(), "BTC");
         assertEquals(0, dto.price().compareTo(price));
         assertEquals(dto.quantity(), 3.0);
 
         Asset saved = captor.getValue();
         assertEquals(saved.getWallet(), wallet);
-        assertEquals(saved.getSymbol(), "ETH");
+        assertEquals(saved.getSymbol(), "BTC");
+        assertEquals(saved.getSlug(), "bitcoin");
         assertEquals(0, saved.getPrice().compareTo(price));
         assertEquals(saved.getQuantity(), 3.0);
         assertNotNull(saved.getCreateAt());
 
         verify(walletRepository).findById(validWalletId);
         verify(assetRepository).save(any(Asset.class));
-        verifyNoMoreInteractions(walletRepository, assetRepository);
+        verify(coinCapService).fetchAsset("btc");
+        verifyNoMoreInteractions(walletRepository, assetRepository, coinCapService);
 
+    }
+
+    @Test
+    @DisplayName("addAsset() -> 400 when CoinCap returns empty")
+    void addAssetWithInvalidSymbol() {
+
+        long validWalletId = 1L;
+        Wallet wallet = new Wallet();
+        wallet.setId(validWalletId);
+        when(walletRepository.findById(validWalletId)).thenReturn(Optional.of(wallet));
+        when(coinCapService.fetchAsset("foo")).thenReturn(Optional.empty());
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> assetService.addAsset(1L, new AddAssetRequest("foo", new BigDecimal("1000.0"), 3.0))
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("Unknown asset"));
+
+        verify(coinCapService).fetchAsset("foo");
+        verifyNoMoreInteractions(assetRepository, coinCapService, walletRepository);
     }
 
 }
