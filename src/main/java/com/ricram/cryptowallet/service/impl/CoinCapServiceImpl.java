@@ -80,7 +80,7 @@ public class CoinCapServiceImpl implements CoinCapService {
                     .bodyToMono(CoinCapSingleAssetResponseDto.class)
                     .block();
 
-            if (resp == null || resp.data() == null) {
+            if (resp == null || resp.data() == null || resp.data().symbol() == null) {
                 return Optional.empty();
             }
             System.out.println("resp: " + resp.data());

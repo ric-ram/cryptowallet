@@ -114,11 +114,11 @@ public class CoinCapServiceImplTest {
     }
 
     @Test
-    @DisplayName("fetchAssetBySlug() -> 404 when symbol is not found")
+    @DisplayName("fetchAssetBySlug() -> 404 when slug is not found")
     void whenAssetSlugDoesNotExist() throws Exception {
         // simulate an empty data array
         server.enqueue(new MockResponse()
-                .setBody("{\"data\":[]}")
+                .setBody("{\"data\":{}}")
                 .addHeader("Content-Type", "application/json"));
 
         assertTrue(service.fetchAssetBySlug("noslug").isEmpty());

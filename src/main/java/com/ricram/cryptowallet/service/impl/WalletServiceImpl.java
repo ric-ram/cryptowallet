@@ -51,18 +51,15 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional(readOnly = true)
     public WalletValuationResponseDto getValuation(Long walletId) {
-        // find wallet
+
         Wallet wallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Wallet not found"
                 ));
 
-        // get all quantities
         List<AssetQuantity> assetQuantities = assetRepository.findQuantitiesByWalletId(walletId);
 
-        // get latest price for each asset
-        // multiply by all the quantities Beware of duplicate assets in the wallet, must sum all quantities first
         List<AssetValue> assetValues = assetQuantities.stream()
                 .map(asset -> {
                     String slug = asset.getSlug();
@@ -82,12 +79,10 @@ public class WalletServiceImpl implements WalletService {
                 })
                 .toList();
 
-        // add all asset values
         BigDecimal total = assetValues.stream()
                 .map(AssetValue::value)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // construct object and return
         return new WalletValuationResponseDto(walletId, total, assetValues);
     }
 }

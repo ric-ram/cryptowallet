@@ -3,10 +3,8 @@ package com.ricram.cryptowallet;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ricram.cryptowallet.controller.WalletController;
-import com.ricram.cryptowallet.dto.AddAssetRequest;
-import com.ricram.cryptowallet.dto.AssetResponseDto;
-import com.ricram.cryptowallet.dto.CreateWalletRequest;
-import com.ricram.cryptowallet.dto.WalletResponseDto;
+import com.ricram.cryptowallet.dao.AssetQuantity;
+import com.ricram.cryptowallet.dto.*;
 import com.ricram.cryptowallet.service.AssetService;
 import com.ricram.cryptowallet.service.WalletService;
 import org.junit.jupiter.api.DisplayName;
@@ -23,12 +21,15 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.print.attribute.standard.Media;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(WalletController.class)
@@ -160,5 +161,59 @@ public class WalletControllerTest {
                 .andExpect(jsonPath("$.quantity").value(5.0));
     }
 
+    @Test
+    @DisplayName("GET /wallet/{id} -> 404 if wallet not found")
+    void whenWalletWithInvalidId() throws Exception {
+
+        Long id = 44L;
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"))
+                .when(walletService).getValuation(id);
+
+        mvc.perform(get("/wallet/{id}", id))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /wallet/{id} -> 503 if a price can't be found")
+    void whenPriceNotFound() throws Exception {
+
+        Long id = 1L;
+        doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "No recorded price for BTC"))
+                .when(walletService).getValuation(id);
+
+        mvc.perform(get("/wallet/{id}", id))
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    @DisplayName("GET /wallet/{id} -> 200 return the total valuation of the wallet and of each asset")
+    void whenGetValuationSuccess() throws Exception{
+
+        Long id = 1L;
+        AssetValue a1 = new AssetValue("BTC", 4.0,
+                new BigDecimal("1000.0"), new BigDecimal("4000.0"));
+        AssetValue a2 = new AssetValue("ETH", 5.0,
+                new BigDecimal("500.0"), new BigDecimal("2500.0"));
+        WalletValuationResponseDto dto = new WalletValuationResponseDto(
+                id,
+                new BigDecimal("6500.0"),
+                List.of(a1, a2)
+        );
+        when(walletService.getValuation(id))
+                .thenReturn(dto);
+
+        mvc.perform(get("/wallet/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.total").value(6500))
+                .andExpect(jsonPath("$.assets[0].symbol").value("BTC"))
+                .andExpect(jsonPath("$.assets[0].quantity").value(4.0))
+                .andExpect(jsonPath("$.assets[0].price").value(1000.0))
+                .andExpect(jsonPath("$.assets[0].value").value(4000.0))
+                .andExpect(jsonPath("$.assets[1].symbol").value("ETH"))
+                .andExpect(jsonPath("$.assets[1].quantity").value(5.0))
+                .andExpect(jsonPath("$.assets[1].price").value(500.0))
+                .andExpect(jsonPath("$.assets[1].value").value(2500.0));
+    }
 }
 
