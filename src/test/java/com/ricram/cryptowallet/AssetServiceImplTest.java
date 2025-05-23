@@ -1,11 +1,13 @@
 package com.ricram.cryptowallet;
 
 import com.ricram.cryptowallet.dao.AssetRepository;
+import com.ricram.cryptowallet.dao.LatestPriceRepository;
 import com.ricram.cryptowallet.dao.WalletRepository;
 import com.ricram.cryptowallet.dto.AddAssetRequest;
 import com.ricram.cryptowallet.dto.AssetInfo;
 import com.ricram.cryptowallet.dto.AssetResponseDto;
 import com.ricram.cryptowallet.entity.Asset;
+import com.ricram.cryptowallet.entity.LatestPrice;
 import com.ricram.cryptowallet.entity.Wallet;
 import com.ricram.cryptowallet.service.CoinCapService;
 import com.ricram.cryptowallet.service.impl.AssetServiceImpl;
@@ -21,10 +23,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowableOfType;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -36,6 +39,9 @@ public class AssetServiceImplTest {
 
     @Mock
     private AssetRepository assetRepository;
+
+    @Mock
+    private LatestPriceRepository latestPriceRepository;
 
     @Mock
     private CoinCapService coinCapService;
@@ -74,10 +80,22 @@ public class AssetServiceImplTest {
 
         BigDecimal price = new BigDecimal("10000.0");
         AssetInfo info = new AssetInfo("bitcoin", "BTC", price);
-        when(coinCapService.fetchAsset("btc")).thenReturn(Optional.of(info));
+        when(coinCapService.fetchAssetBySymbol("btc")).thenReturn(Optional.of(info));
 
-        ArgumentCaptor<Asset> captor = ArgumentCaptor.forClass(Asset.class);
-        when(assetRepository.save(captor.capture()))
+        LatestPrice existing = LatestPrice.builder()
+                .id(10L)
+                .slug("bitcoin")
+                .price(new BigDecimal("12000.0"))
+                .fetchedAt(Instant.now())
+                .build();
+        when(latestPriceRepository.findBySlug("bitcoin")).thenReturn(Optional.of(existing));
+
+        ArgumentCaptor<LatestPrice> priceCaptor = ArgumentCaptor.forClass(LatestPrice.class);
+        when(latestPriceRepository.save(priceCaptor.capture()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ArgumentCaptor<Asset> assetCaptor = ArgumentCaptor.forClass(Asset.class);
+        when(assetRepository.save(assetCaptor.capture()))
                 .thenAnswer(invocation -> {
                     Asset a = invocation.getArgument(0);
                     a.setId(10L);
@@ -85,26 +103,33 @@ public class AssetServiceImplTest {
                     return a;
                 });
 
-        AddAssetRequest req = new AddAssetRequest("btc", price, 3.0);
+        BigDecimal purchasedPrice = new BigDecimal("9000.0");
+        AddAssetRequest req = new AddAssetRequest("btc", purchasedPrice, 3.0);
 
         AssetResponseDto dto = assetService.addAsset(validWalletId, req);
 
         assertEquals(10L, dto.id());
         assertEquals(dto.symbol(), "BTC");
-        assertEquals(0, dto.price().compareTo(price));
+        assertEquals(0, dto.price().compareTo(purchasedPrice));
         assertEquals(dto.quantity(), 3.0);
 
-        Asset saved = captor.getValue();
+        LatestPrice upserted = priceCaptor.getValue();
+        assertEquals(upserted.getSlug(), "bitcoin");
+        System.out.println(upserted.getPrice());
+        assertEquals(0, upserted.getPrice().compareTo(price));
+        assertThat(upserted.getFetchedAt()).isCloseTo(Instant.now(), within(5, ChronoUnit.SECONDS));
+
+        Asset saved = assetCaptor.getValue();
         assertEquals(saved.getWallet(), wallet);
         assertEquals(saved.getSymbol(), "BTC");
         assertEquals(saved.getSlug(), "bitcoin");
-        assertEquals(0, saved.getPrice().compareTo(price));
+        assertEquals(0, saved.getPurchasedPrice().compareTo(purchasedPrice));
         assertEquals(saved.getQuantity(), 3.0);
         assertNotNull(saved.getCreateAt());
 
         verify(walletRepository).findById(validWalletId);
         verify(assetRepository).save(any(Asset.class));
-        verify(coinCapService).fetchAsset("btc");
+        verify(coinCapService).fetchAssetBySymbol("btc");
         verifyNoMoreInteractions(walletRepository, assetRepository, coinCapService);
 
     }
@@ -117,7 +142,7 @@ public class AssetServiceImplTest {
         Wallet wallet = new Wallet();
         wallet.setId(validWalletId);
         when(walletRepository.findById(validWalletId)).thenReturn(Optional.of(wallet));
-        when(coinCapService.fetchAsset("foo")).thenReturn(Optional.empty());
+        when(coinCapService.fetchAssetBySymbol("foo")).thenReturn(Optional.empty());
 
         ResponseStatusException ex = assertThrows(
                 ResponseStatusException.class,
@@ -126,7 +151,7 @@ public class AssetServiceImplTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertTrue(ex.getReason().contains("Unknown asset"));
 
-        verify(coinCapService).fetchAsset("foo");
+        verify(coinCapService).fetchAssetBySymbol("foo");
         verifyNoMoreInteractions(assetRepository, coinCapService, walletRepository);
     }
 
