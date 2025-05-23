@@ -25,7 +25,7 @@ public class Asset {
     private String slug;
 
     @Column(nullable = false, precision = 19, scale = 8)
-    private BigDecimal price;
+    private BigDecimal purchasedPrice;
 
     @Column(nullable = false)
     private double quantity;
