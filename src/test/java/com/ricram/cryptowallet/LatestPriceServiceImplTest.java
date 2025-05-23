@@ -76,6 +76,7 @@ public class LatestPriceServiceImplTest {
         LatestPrice existingBtc = LatestPrice.builder()
                 .id(1L)
                 .slug("bitcoin")
+                .symbol("BTC")
                 .price(new BigDecimal("68000.0"))
                 .fetchedAt(Instant.now())
                 .build();
@@ -92,13 +93,13 @@ public class LatestPriceServiceImplTest {
 
         List<LatestPrice> saved = captor.getAllValues();
         assertThat(saved).hasSize(2);
-        System.out.println("Saved " + saved.get(0));
 
         LatestPrice upBtc = saved.stream()
                 .filter(lp -> lp.getSlug().equals("bitcoin"))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Expected BTC upsert not found"));
         assertThat(upBtc.getId()).isEqualTo(1L);
+        assertThat(upBtc.getSymbol()).isEqualTo("BTC");
         assertThat(upBtc.getPrice()).isEqualByComparingTo("60000.0");
         assertThat(upBtc.getFetchedAt()).isCloseTo(Instant.now(), within(5, ChronoUnit.SECONDS));
 
@@ -107,6 +108,7 @@ public class LatestPriceServiceImplTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Expected ETH upsert not found"));
         assertThat(upEth.getId()).isNull();  // new row (no id yet)
+        assertThat(upEth.getSymbol()).isEqualTo("ETH");
         assertThat(upEth.getPrice()).isEqualByComparingTo("4000.0");
         assertThat(upEth.getFetchedAt()).isCloseTo(Instant.now(), within(5, ChronoUnit.SECONDS));
 

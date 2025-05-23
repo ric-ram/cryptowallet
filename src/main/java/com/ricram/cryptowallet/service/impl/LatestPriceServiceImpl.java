@@ -69,6 +69,7 @@ public class LatestPriceServiceImpl implements LatestPriceService {
                                 })
                                 .orElseGet(() -> LatestPrice.builder()
                                         .slug(slug)
+                                        .symbol(info.symbol())
                                         .price(info.price())
                                         .fetchedAt(Instant.now())
                                         .build());

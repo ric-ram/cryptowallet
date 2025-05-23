@@ -1,9 +1,6 @@
 package com.ricram.cryptowallet.controller;
 
-import com.ricram.cryptowallet.dto.AddAssetRequest;
-import com.ricram.cryptowallet.dto.AssetResponseDto;
-import com.ricram.cryptowallet.dto.CreateWalletRequest;
-import com.ricram.cryptowallet.dto.WalletResponseDto;
+import com.ricram.cryptowallet.dto.*;
 import com.ricram.cryptowallet.service.AssetService;
 import com.ricram.cryptowallet.service.WalletService;
 import jakarta.validation.Valid;
@@ -43,5 +40,12 @@ public class WalletController {
         return ResponseEntity
                 .created(location)
                 .body(dto);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<WalletValuationResponseDto> getWalletValuation(@PathVariable("id") Long walletId) {
+        WalletValuationResponseDto dto = walletService.getValuation(walletId);
+
+        return ResponseEntity.ok(dto);
     }
 }

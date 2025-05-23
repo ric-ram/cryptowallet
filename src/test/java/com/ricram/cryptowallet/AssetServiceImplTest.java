@@ -85,6 +85,7 @@ public class AssetServiceImplTest {
         LatestPrice existing = LatestPrice.builder()
                 .id(10L)
                 .slug("bitcoin")
+                .symbol("BTC")
                 .price(new BigDecimal("12000.0"))
                 .fetchedAt(Instant.now())
                 .build();
@@ -115,7 +116,7 @@ public class AssetServiceImplTest {
 
         LatestPrice upserted = priceCaptor.getValue();
         assertEquals(upserted.getSlug(), "bitcoin");
-        System.out.println(upserted.getPrice());
+        assertEquals(upserted.getSymbol(), "BTC");
         assertEquals(0, upserted.getPrice().compareTo(price));
         assertThat(upserted.getFetchedAt()).isCloseTo(Instant.now(), within(5, ChronoUnit.SECONDS));
 

@@ -24,6 +24,9 @@ public class LatestPrice {
     @Column(nullable = false, unique = true)
     private String slug;
 
+    @Column(nullable = false)
+    private String symbol;
+
     @Column(nullable = false, precision = 19, scale = 8)
     private BigDecimal price;
 

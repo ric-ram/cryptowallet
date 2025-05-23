@@ -53,6 +53,7 @@ public class AssetServiceImpl implements AssetService {
                 })
                 .orElseGet(() -> LatestPrice.builder()
                         .slug(info.slug())
+                        .symbol(info.symbol())
                         .price(info.price())
                         .fetchedAt(Instant.now())
                         .build()
