@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -72,8 +73,8 @@ public class WalletServiceImpl implements WalletService {
                                     "No recorded price for " + slug
                             ));
 
-                    BigDecimal price = latestPrice.getPrice();
-                    BigDecimal value = price.multiply(BigDecimal.valueOf(quantity));
+                    BigDecimal price = latestPrice.getPrice().setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal value = price.multiply(BigDecimal.valueOf(quantity)).setScale(2, RoundingMode.HALF_UP);
 
                     return new AssetValue(symbol, quantity, price, value);
                 })
@@ -81,7 +82,8 @@ public class WalletServiceImpl implements WalletService {
 
         BigDecimal total = assetValues.stream()
                 .map(AssetValue::value)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
 
         return new WalletValuationResponseDto(walletId, total, assetValues);
     }
