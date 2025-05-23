@@ -1,8 +1,9 @@
 package com.ricram.cryptowallet.service.impl;
 
 import com.ricram.cryptowallet.dto.AssetInfo;
-import com.ricram.cryptowallet.dto.AssetListResponseDto;
+import com.ricram.cryptowallet.dto.CoinCapListAssetResponseDto;
 import com.ricram.cryptowallet.dto.CoinCapAsset;
+import com.ricram.cryptowallet.dto.CoinCapSingleAssetResponseDto;
 import com.ricram.cryptowallet.service.CoinCapService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,14 +30,14 @@ public class CoinCapServiceImpl implements CoinCapService {
         String upperCaseSymbol = symbol.trim().toUpperCase();
 
         try {
-            AssetListResponseDto resp = coinCapWebClient.get()
+            CoinCapListAssetResponseDto resp = coinCapWebClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/v3/assets")
                             .queryParam("search", upperCaseSymbol)
                             .queryParam("limit", 1)
                             .build())
                     .retrieve()
-                    .bodyToMono(AssetListResponseDto.class)
+                    .bodyToMono(CoinCapListAssetResponseDto.class)
                     .block();
 
             if (resp == null || resp.data() == null || resp.data().isEmpty()) {
@@ -73,17 +74,17 @@ public class CoinCapServiceImpl implements CoinCapService {
     @Override
     public Optional<AssetInfo> fetchAssetBySlug(String slug) {
         try {
-            AssetListResponseDto resp = coinCapWebClient.get()
+            CoinCapSingleAssetResponseDto resp = coinCapWebClient.get()
                     .uri("/v3/assets/{slug}", slug)
                     .retrieve()
-                    .bodyToMono(AssetListResponseDto.class)
+                    .bodyToMono(CoinCapSingleAssetResponseDto.class)
                     .block();
 
-            if (resp == null || resp.data() == null || resp.data().isEmpty()) {
+            if (resp == null || resp.data() == null) {
                 return Optional.empty();
             }
-
-            CoinCapAsset coinCap = resp.data().get(0);
+            System.out.println("resp: " + resp.data());
+            CoinCapAsset coinCap = resp.data();
             BigDecimal price = new BigDecimal(coinCap.priceUsd());
             return Optional.of(new AssetInfo(coinCap.id(), coinCap.symbol(), price));
         } catch (WebClientResponseException.NotFound notFound) {

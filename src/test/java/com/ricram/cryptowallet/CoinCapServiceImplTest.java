@@ -94,9 +94,9 @@ public class CoinCapServiceImplTest {
     void whenAssetSlugExist()  throws Exception {
         String json = """
                 {
-                    "data": [
-                        { "id": "bitcoin", "symbol": "BTC", "priceUsd": "60000.0" }
-                    ]
+                    "data": {
+                        "id": "bitcoin", "symbol": "BTC", "priceUsd": "60000.0"
+                    }
                 }
             """;
 

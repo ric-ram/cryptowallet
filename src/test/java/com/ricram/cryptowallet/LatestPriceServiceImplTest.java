@@ -68,9 +68,6 @@ public class LatestPriceServiceImplTest {
         Asset a3 = Asset.builder().symbol("btc").slug("bitcoin").build();
         when(assetRepository.findDistinctSlugs()).thenReturn(List.of(a1.getSlug(), a2.getSlug()));
 
-        assertThat(service).isNotNull();
-        assertThat(assetRepository.findDistinctSlugs()).hasSize(2);
-
         when(coinCapService.fetchAssetBySlug("bitcoin"))
                 .thenReturn(Optional.of(new AssetInfo("bitcoin", "BTC", new BigDecimal("60000.0"))));
         when(coinCapService.fetchAssetBySlug("ethereum"))
