@@ -24,7 +24,7 @@ public class CoinCapServiceImpl implements CoinCapService {
 
 
     @Override
-    public Optional<AssetInfo> fetchAsset(String symbol) {
+    public Optional<AssetInfo> fetchAssetBySymbol(String symbol) {
 
         String upperCaseSymbol = symbol.trim().toUpperCase();
 
@@ -35,6 +35,46 @@ public class CoinCapServiceImpl implements CoinCapService {
                             .queryParam("search", upperCaseSymbol)
                             .queryParam("limit", 1)
                             .build())
+                    .retrieve()
+                    .bodyToMono(AssetListResponseDto.class)
+                    .block();
+
+            if (resp == null || resp.data() == null || resp.data().isEmpty()) {
+                return Optional.empty();
+            }
+
+            CoinCapAsset coinCap = resp.data().get(0);
+            BigDecimal price = new BigDecimal(coinCap.priceUsd());
+            return Optional.of(new AssetInfo(coinCap.id(), coinCap.symbol(), price));
+        } catch (WebClientResponseException.NotFound notFound) {
+            // 404 -> No such symbol exists
+            return Optional.empty();
+
+        } catch (WebClientResponseException e) {
+            // 4xx or 5xx from CoinCap
+            log.error("CoinCap returned error status {}: {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unable to fetch data from CoinCap",
+                    e
+            );
+
+        } catch (Exception e) {
+            // JSON parsing errors, timeouts, connectivity issue, etc.
+            log.error("Unexpected error calling CoinCap", e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unexpected error fetching asset info",
+                    e
+            );
+        }
+    }
+
+    @Override
+    public Optional<AssetInfo> fetchAssetBySlug(String slug) {
+        try {
+            AssetListResponseDto resp = coinCapWebClient.get()
+                    .uri("/v3/assets/{slug}", slug)
                     .retrieve()
                     .bodyToMono(AssetListResponseDto.class)
                     .block();

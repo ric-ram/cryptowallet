@@ -2,7 +2,6 @@ package com.ricram.cryptowallet;
 
 
 import com.ricram.cryptowallet.dto.AssetInfo;
-import com.ricram.cryptowallet.service.CoinCapService;
 import com.ricram.cryptowallet.service.impl.CoinCapServiceImpl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -42,7 +41,7 @@ public class CoinCapServiceImplTest {
 
 
     @Test
-    @DisplayName("fetchAsset() -> Success when the symbol exists")
+    @DisplayName("fetchAssetBySymbol() -> Success when the symbol exists")
     void whenAssetSymbolExist()  throws Exception {
         String json = """
                 {
@@ -56,7 +55,7 @@ public class CoinCapServiceImplTest {
                 .setBody(json)
                 .addHeader("Content-Type", "application/json"));
 
-        Optional<AssetInfo> opt = service.fetchAsset("btc");
+        Optional<AssetInfo> opt = service.fetchAssetBySymbol("btc");
 
         assertTrue(opt.isPresent());
         AssetInfo info = opt.get();
@@ -66,25 +65,74 @@ public class CoinCapServiceImplTest {
     }
 
     @Test
-    @DisplayName("fetchAsset() -> 404 when symbol is not found")
+    @DisplayName("fetchAssetBySymbol() -> 404 when symbol is not found")
     void whenAssetSymbolDoesNotExist() throws Exception {
         // simulate an empty data array
         server.enqueue(new MockResponse()
                 .setBody("{\"data\":[]}")
                 .addHeader("Content-Type", "application/json"));
 
-        assertTrue(service.fetchAsset("NOSYM").isEmpty());
+        assertTrue(service.fetchAssetBySymbol("NOSYM").isEmpty());
     }
 
     @Test
-    @DisplayName("503 -> when there is an issue with CoinCap api")
-    void whenServerError() throws Exception {
+    @DisplayName("fetchAssetBySymbol() -> 503 when there is an issue with CoinCap api")
+    void whenFetchBySymbolServerError() throws Exception {
 
          server.enqueue(new MockResponse().setResponseCode(503));
 
         ResponseStatusException ex = assertThrows(
                 ResponseStatusException.class,
-                () -> service.fetchAsset("btc")
+                () -> service.fetchAssetBySymbol("btc")
+        );
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("fetchAssetBySlug() -> Success when the symbol exists")
+    void whenAssetSlugExist()  throws Exception {
+        String json = """
+                {
+                    "data": [
+                        { "id": "bitcoin", "symbol": "BTC", "priceUsd": "60000.0" }
+                    ]
+                }
+            """;
+
+        server.enqueue(new MockResponse()
+                .setBody(json)
+                .addHeader("Content-Type", "application/json"));
+
+        Optional<AssetInfo> opt = service.fetchAssetBySlug("bitcoin");
+
+        assertTrue(opt.isPresent());
+        AssetInfo info = opt.get();
+        assertEquals("bitcoin", info.slug());
+        assertEquals("BTC", info.symbol());
+        assertEquals(new BigDecimal("60000.0"), info.price());
+    }
+
+    @Test
+    @DisplayName("fetchAssetBySlug() -> 404 when symbol is not found")
+    void whenAssetSlugDoesNotExist() throws Exception {
+        // simulate an empty data array
+        server.enqueue(new MockResponse()
+                .setBody("{\"data\":[]}")
+                .addHeader("Content-Type", "application/json"));
+
+        assertTrue(service.fetchAssetBySlug("noslug").isEmpty());
+    }
+
+    @Test
+    @DisplayName("fetchAssetBySlug() -> 503 when there is an issue with CoinCap api")
+    void whenFetchBySlugServerError() throws Exception {
+
+        server.enqueue(new MockResponse().setResponseCode(503));
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> service.fetchAssetBySlug("bitcoin")
         );
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
