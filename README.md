@@ -110,7 +110,7 @@ app.prices.poll-rate-ms=60000
 | GET | `/wallet/{id}` | Get wallet valuation (assets + total) |
 | POST | `/wallet/simulate` | Simulate profit/loss today or at a past date |
 
-> TODO: Swagger file
+> **Swagger UI** is available at `/swagger-ui.html`.
 
 ---
 
