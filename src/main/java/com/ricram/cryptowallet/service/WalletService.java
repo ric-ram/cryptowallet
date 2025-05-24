@@ -1,8 +1,6 @@
 package com.ricram.cryptowallet.service;
 
-import com.ricram.cryptowallet.dto.CreateWalletRequest;
-import com.ricram.cryptowallet.dto.WalletResponseDto;
-import com.ricram.cryptowallet.dto.WalletValuationResponseDto;
+import com.ricram.cryptowallet.dto.*;
 
 /**
  * Defines wallet-related business operations
@@ -24,4 +22,12 @@ public interface WalletService {
      * @return the valuation of the wallet with the value of each asset and the total value of the wallet
      */
     WalletValuationResponseDto getValuation(Long walletId);
+
+    /**
+     * Returns simulation of a wallet at a given date
+     *
+     * @param req object with wallet to simulate profit and date to when to calculate it
+     * @return the wallet simulation with the total value, worst and best performant asset
+     */
+    WalletSimulationResponseDto simulate(WalletSimulationRequest req);
 }

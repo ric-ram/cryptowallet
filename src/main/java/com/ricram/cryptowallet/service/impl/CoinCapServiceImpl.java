@@ -1,9 +1,6 @@
 package com.ricram.cryptowallet.service.impl;
 
-import com.ricram.cryptowallet.dto.AssetInfo;
-import com.ricram.cryptowallet.dto.CoinCapListAssetResponseDto;
-import com.ricram.cryptowallet.dto.CoinCapAsset;
-import com.ricram.cryptowallet.dto.CoinCapSingleAssetResponseDto;
+import com.ricram.cryptowallet.dto.*;
 import com.ricram.cryptowallet.service.CoinCapService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -102,6 +99,43 @@ public class CoinCapServiceImpl implements CoinCapService {
 
         } catch (Exception e) {
             // JSON parsing errors, timeouts, connectivity issue, etc.
+            log.error("Unexpected error calling CoinCap", e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unexpected error fetching asset info",
+                    e
+            );
+        }
+    }
+
+    @Override
+    public Optional<CoinCapHistoryResponseDto> fetchAssetHistoryBySlug(String slug, long startMillis, long endMillis) {
+        try {
+            CoinCapHistoryResponseDto resp = coinCapWebClient.get()
+                    .uri(uri -> uri.path("/v3/assets/{slug}/history")
+                            .queryParam("interval", "d1")
+                            .queryParam("start", startMillis)
+                            .queryParam("end", endMillis)
+                            .build(slug))
+                    .retrieve()
+                    .bodyToMono(CoinCapHistoryResponseDto.class)
+                    .block();
+
+            if (resp == null || resp.data() == null || resp.data().isEmpty()) {
+                return Optional.empty();
+            }
+
+            return Optional.of(resp);
+        } catch (WebClientResponseException.NotFound notFound) {
+            return Optional.empty();
+        } catch (WebClientResponseException e) {
+            log.error("CoinCap returned error status {}: {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unable to fetch data from CoinCap",
+                    e
+            );
+        } catch (Exception e) {
             log.error("Unexpected error calling CoinCap", e);
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
