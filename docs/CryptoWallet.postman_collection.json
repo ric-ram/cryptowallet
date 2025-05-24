@@ -1,0 +1,134 @@
+{
+  "info": {
+    "name": "Crypto Wallet Management API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection of requests for the Crypto Wallet Management API"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "wallet_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create Wallet",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/wallet",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "wallet"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"user@example.com\"\n}"
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Extract wallet_id', function () {",
+              "    var json = pm.response.json();",
+              "    pm.collectionVariables.set('wallet_id', json.id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Add Asset to Wallet",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/wallet/{{wallet_id}}/asset",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "wallet",
+            "{{wallet_id}}",
+            "asset"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"symbol\": \"BTC\",\n  \"quantity\": 1.5,\n  \"price\": 1000\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Wallet Valuation",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/wallet/{{wallet_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "wallet",
+            "{{wallet_id}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Simulate Wallet Profit/Loss",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/wallet/simulate",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "wallet",
+            "simulate"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"date\": \"07/01/2025\",\n  \"assets\": [\n    {\n      \"symbol\": \"BTC\",\n      \"quantity\": 0.5,\n      \"value\": 35000\n    },\n    {\n      \"symbol\": \"ETH\",\n      \"quantity\": 5,\n      \"value\": 15000.0\n    }\n  ]\n}"
+        }
+      },
+      "response": []
+    }
+  ]
+}
