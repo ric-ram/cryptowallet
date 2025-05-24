@@ -15,6 +15,13 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
     @Query("select distinct a.slug from Asset a")
     List<String> findDistinctSlugs();
 
+    /**
+     * Finds all the assets from a certain walletId and groups them by its slug and symbol
+     * and sums its quantities.
+     *
+     * @param walletId associated with the assets
+     * @return the totol quantity of each asset a wallet has
+     */
     @Query("""
             SELECT a.slug AS slug,
                    a.symbol AS symbol,
