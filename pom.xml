@@ -73,7 +73,7 @@
 		<dependency>
 			<groupId>com.squareup.okio</groupId>
 			<artifactId>okio-jvm</artifactId>
-			<version>3.5.0</version>  <!-- patched in 3.5.0+ :contentReference[oaicite:0]{index=0} -->
+			<version>3.5.0</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
