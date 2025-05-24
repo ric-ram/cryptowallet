@@ -4,16 +4,15 @@ import com.ricram.cryptowallet.dao.AssetQuantity;
 import com.ricram.cryptowallet.dao.AssetRepository;
 import com.ricram.cryptowallet.dao.LatestPriceRepository;
 import com.ricram.cryptowallet.dao.WalletRepository;
-import com.ricram.cryptowallet.dto.AssetValue;
-import com.ricram.cryptowallet.dto.CreateWalletRequest;
-import com.ricram.cryptowallet.dto.WalletResponseDto;
-import com.ricram.cryptowallet.dto.WalletValuationResponseDto;
+import com.ricram.cryptowallet.dto.*;
 import com.ricram.cryptowallet.entity.LatestPrice;
 import com.ricram.cryptowallet.entity.Wallet;
+import com.ricram.cryptowallet.service.CoinCapService;
 import com.ricram.cryptowallet.service.WalletService;
 import com.ricram.cryptowallet.service.impl.WalletServiceImpl;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import org.checkerframework.checker.units.qual.C;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +25,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,8 +47,19 @@ public class WalletServiceImplTest {
     @Mock
     private LatestPriceRepository latestPriceRepository;
 
+    @Mock
+    private CoinCapService coinCapService;
+
     @InjectMocks
     private WalletServiceImpl walletService;
+
+    private static final ZoneId ZONE = ZoneId.of("Europe/Lisbon");
+    private LocalDate today;
+
+    @BeforeEach
+    void setUp() {
+        today = LocalDate.now(ZONE);
+    }
 
     @Test
     @DisplayName("create() -> Conflict when email already exists")
@@ -251,5 +264,127 @@ public class WalletServiceImplTest {
         verify(latestPriceRepository).findBySlug("bitcoin");
         verify(latestPriceRepository).findBySlug("ethereum");
         verifyNoMoreInteractions(walletRepository, assetRepository, latestPriceRepository);
+    }
+
+    @Test
+    @DisplayName("simulateWallet() -> 400 when symbol unknown")
+    void simulateWalletUnknownSymbol() {
+        AssetSimulation assetReq = new AssetSimulation("FOO", 1.0, new BigDecimal("1000.0"));
+        WalletSimulationRequest req = new WalletSimulationRequest(null, List.of(assetReq));
+
+        when(coinCapService.fetchAssetBySymbol("FOO")).thenReturn(Optional.empty());
+
+        var ex = assertThrows(ResponseStatusException.class,
+                () -> walletService.simulateWallet(req));
+
+        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(ex.getReason()).contains("Unknown asset symbol: FOO");
+    }
+
+    @Test
+    @DisplayName("simulateWallet() → today + cached price")
+    void simulateWalletTodayCached() {
+        AssetSimulation assetReq = new AssetSimulation("BTC", 2.0, new BigDecimal("1000.0"));
+        WalletSimulationRequest req = new WalletSimulationRequest(today, List.of(assetReq));
+
+        when(coinCapService.fetchAssetBySymbol("BTC"))
+                .thenReturn(Optional.of(new AssetInfo("bitcoin","BTC",BigDecimal.ZERO)));
+
+        var cached = LatestPrice.builder()
+                .slug("bitcoin")
+                .symbol("BTC")
+                .price(new BigDecimal("600.00"))
+                .fetchedAt(Instant.now())
+                .build();
+        when(latestPriceRepository.findBySlug("bitcoin"))
+                .thenReturn(Optional.of(cached));
+
+        WalletSimulationResponseDto resp = walletService.simulateWallet(req);
+
+        // compute: assetValue = 600 × 2 = 1200; profit = 1200 − 1000 = 200; perf = 200/1000*100 = 20.00
+        assertThat(resp.total()).isEqualByComparingTo("1200.00");
+        assertThat(resp.bestAsset()).isEqualTo("BTC");
+        assertThat(resp.bestPerformance()).isEqualByComparingTo("20.00");
+        assertThat(resp.worstAsset()).isEqualTo("BTC");
+        assertThat(resp.worstPerformance()).isEqualByComparingTo("20.00");
+    }
+
+    @Test
+    @DisplayName("simulateWallet() → today + no cache for slug")
+    void simulateWalletTodayNotCached() {
+        AssetSimulation assetReq = new AssetSimulation("ETH", 1.5, new BigDecimal("500.0"));
+        WalletSimulationRequest req = new WalletSimulationRequest(null, List.of(assetReq));
+
+        when(coinCapService.fetchAssetBySymbol("ETH"))
+                .thenReturn(Optional.of(new AssetInfo("ethereum","ETH",BigDecimal.ZERO)));
+
+        when(latestPriceRepository.findBySlug("ethereum"))
+                .thenReturn(Optional.empty());
+
+        when(coinCapService.fetchAssetBySlug("ethereum"))
+                .thenReturn(Optional.of(new AssetInfo("ethereum","ETH", new BigDecimal("800.0"))));
+
+        ArgumentCaptor<LatestPrice> cap = ArgumentCaptor.forClass(LatestPrice.class);
+        when(latestPriceRepository.save(cap.capture()))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        var resp = walletService.simulateWallet(req);
+
+        assertThat(cap.getValue().getPrice()).isEqualByComparingTo("800.0");
+
+        // compute: assetValue = 800 * 1.5 = 1200; profit = 1200 - 500 = 700; perf = 700 / 500 * 100 = 140.00
+        assertThat(resp.total()).isEqualByComparingTo("1200.00");
+        assertThat(resp.bestAsset()).isEqualTo("ETH");
+        assertThat(resp.bestPerformance()).isEqualByComparingTo("140.00");
+        assertThat(resp.bestAsset()).isEqualTo("ETH");
+        assertThat(resp.bestPerformance()).isEqualByComparingTo("140.00");
+    }
+
+    @Test
+    @DisplayName("simulateWallet() → past date gets history from CoinCap endpoint")
+    void simulateWalletPastDate() {
+        LocalDate past = today.minusDays(1);
+        AssetSimulation assetReq = new AssetSimulation("BTC", 2.0, new BigDecimal("1000.0"));
+        WalletSimulationRequest req = new WalletSimulationRequest(past, List.of(assetReq));
+
+        when(coinCapService.fetchAssetBySymbol("BTC"))
+                .thenReturn(Optional.of(new AssetInfo("bitcoin","BTC",BigDecimal.ZERO)));
+
+        var point = new CoinCapAssetHistory(
+                new BigDecimal("700.00"),
+                past.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+                past.atStartOfDay(ZoneOffset.UTC).toInstant()
+        );
+        when(coinCapService.fetchAssetHistoryBySlug(eq("bitcoin"), anyLong(), anyLong()))
+                .thenReturn(Optional.of(new CoinCapHistoryResponseDto(List.of(point))));
+
+        var resp = walletService.simulateWallet(req);
+
+        // compute: assetValue = priceAt = 700 * 2= 1400; profit = 1400 - 1000 = 400; perf = 400 / 1000 * 100 = 40.00
+        assertThat(resp.total()).isEqualByComparingTo("1400.00");
+        assertThat(resp.bestAsset()).isEqualTo("BTC");
+        assertThat(resp.bestPerformance()).isEqualByComparingTo("40.00");
+        assertThat(resp.worstAsset()).isEqualTo("BTC");
+        assertThat(resp.worstPerformance()).isEqualByComparingTo("40.00");
+    }
+
+    @Test
+    @DisplayName("simulateWallet() → 400 when no history for past date")
+    void simulate_pastDateNoHistory_throwsBadRequest() {
+        LocalDate past = today.minusDays(2);
+        AssetSimulation assetReq = new AssetSimulation("BTC", 3.0, new BigDecimal("300.0"));
+        WalletSimulationRequest req = new WalletSimulationRequest(past, List.of(assetReq));
+
+        when(coinCapService.fetchAssetBySymbol("BTC"))
+                .thenReturn(Optional.of(new AssetInfo("bitcoin","BTC",BigDecimal.ZERO)));
+
+        when(coinCapService.fetchAssetHistoryBySlug(eq("bitcoin"), anyLong(), anyLong()))
+                .thenReturn(Optional.empty());
+
+        var ex = assertThrows(ResponseStatusException.class,
+                () -> walletService.simulateWallet(req));
+
+        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(ex.getReason()).contains("No history for bitcoin");
     }
 }

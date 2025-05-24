@@ -29,5 +29,5 @@ public interface WalletService {
      * @param req object with wallet to simulate profit and date to when to calculate it
      * @return the wallet simulation with the total value, worst and best performant asset
      */
-    WalletSimulationResponseDto simulate(WalletSimulationRequest req);
+    WalletSimulationResponseDto simulateWallet(WalletSimulationRequest req);
 }

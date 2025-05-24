@@ -52,7 +52,7 @@ public class WalletController {
     @PostMapping("/simulate")
     public ResponseEntity<WalletSimulationResponseDto> simulateWallet(@Valid @RequestBody WalletSimulationRequest req) {
 
-        WalletSimulationResponseDto dto = walletService.simulate(req);
+        WalletSimulationResponseDto dto = walletService.simulateWallet(req);
 
         return ResponseEntity.ok(dto);
     }

@@ -21,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.print.attribute.standard.Media;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -104,7 +105,6 @@ public class WalletControllerTest {
                 .andExpect(jsonPath("$.id").value(123))
                 .andExpect(jsonPath("$.email").value("test@example.com"));
     }
-
 
     @Test
     @DisplayName("POST /wallet -> 409 Conflict when email already exists")
@@ -214,6 +214,76 @@ public class WalletControllerTest {
                 .andExpect(jsonPath("$.assets[1].quantity").value(5.0))
                 .andExpect(jsonPath("$.assets[1].price").value(500.0))
                 .andExpect(jsonPath("$.assets[1].value").value(2500.0));
+    }
+
+    @Test
+    @DisplayName("POST /wallet/simulate → 400 when bad request")
+    void whenSimulateWalletWithInvalidPayload() throws Exception {
+        WalletSimulationRequest reqDto = new WalletSimulationRequest(
+                LocalDate.of(2025,5,1),
+                List.of(new AssetSimulation("FOO", 1.0, new BigDecimal("1000.00")))
+        );
+        String json = objectMapper.writeValueAsString(reqDto);
+
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid payload"))
+                .when(walletService).simulateWallet(any(WalletSimulationRequest.class));
+
+        mvc.perform(post("/wallet/simulate")
+                        .contentType("application/json")
+                        .content(json))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /wallet/simulate → 503 when service unavailable")
+    void whenSimulateWalletServiceUnavailable() throws Exception {
+        WalletSimulationRequest reqDto = new WalletSimulationRequest(
+                LocalDate.of(2025,5,1),
+                List.of(new AssetSimulation("BTC", 2.0, new BigDecimal("1000.00")))
+        );
+        String json = objectMapper.writeValueAsString(reqDto);
+
+        doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Dependency down"))
+                .when(walletService).simulateWallet(any(WalletSimulationRequest.class));
+
+        mvc.perform(post("/wallet/simulate")
+                        .contentType("application/json")
+                        .content(json))
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    @DisplayName("POST /wallet/simulate → 200 with correct body on success")
+    void whenSimulateWalletSuccess() throws Exception {
+        WalletSimulationRequest reqDto = new WalletSimulationRequest(
+                LocalDate.of(2025,5,1),
+                List.of(
+                        new AssetSimulation("BTC", 2.0, new BigDecimal("1000.00")),
+                        new AssetSimulation("ETH", 4.0, new BigDecimal("800.00"))
+                )
+        );
+        String jsonReq = objectMapper.writeValueAsString(reqDto);
+
+        // Suppose profit = 2.00, performance = 20.00
+        var respDto = new WalletSimulationResponseDto(
+                new BigDecimal("2500.00"),
+                "BTC",
+                new BigDecimal("50.00"),
+                "ETH",
+                new BigDecimal("25.00")
+        );
+        when(walletService.simulateWallet(any(WalletSimulationRequest.class)))
+                .thenReturn(respDto);
+
+        mvc.perform(post("/wallet/simulate")
+                        .contentType("application/json")
+                        .content(jsonReq))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2500.00))
+                .andExpect(jsonPath("$.best_asset").value("BTC"))
+                .andExpect(jsonPath("$.best_performance").value(50.00))
+                .andExpect(jsonPath("$.worst_asset").value("ETH"))
+                .andExpect(jsonPath("$.worst_performance").value(25.00));
     }
 }
 

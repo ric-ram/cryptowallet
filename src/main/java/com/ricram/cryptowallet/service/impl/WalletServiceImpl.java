@@ -97,7 +97,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    public WalletSimulationResponseDto simulate(WalletSimulationRequest req) {
+    public WalletSimulationResponseDto simulateWallet(WalletSimulationRequest req) {
         // see if date exists, if not assigned it to today
         LocalDate requestDate = Optional.ofNullable(req.date())
                 .orElse(LocalDate.now(ZoneId.of("Europe/Lisbon")));
