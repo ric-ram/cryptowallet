@@ -1,5 +1,8 @@
 # Crypto Wallet Management
 
+[![CI](https://github.com/ric-ram/cryptowallet/actions/workflows/ci.yml/badge.svg)](https://github.com/ric-ram/cryptowallet/actions/workflows/ci.yml)
+
+
 > **Elevator pitch:**  
 > Crypto Wallet Management is a Spring Boot microservice that lets users  
 > create and manage a wallet of cryptocurrency holdings, automatically fetch  

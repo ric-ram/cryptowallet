@@ -89,7 +89,7 @@ public class LatestPriceServiceImpl implements LatestPriceService {
      * Scheduled runner -> Fires every poll-rate-ms milliseconds.
      * Configured in application.properties under app.prices.poll-rate-ms
      */
-    @Scheduled(fixedDelayString = "${app.prices.poll-rate-ms:60000}")
+    @Scheduled(fixedDelayString = "${app.prices.poll-rate-ms:300000}")
     public void scheduledFetchAndStore() {
         log.info("Starting scheduled price update for all distinct slugs");
         fetchAndStoreLatestPrice();
