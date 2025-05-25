@@ -110,16 +110,22 @@ app.prices.poll-rate-ms=60000
 | GET | `/wallet/{id}` | Get wallet valuation (assets + total) |
 | POST | `/wallet/simulate` | Simulate profit/loss today or at a past date |
 
-> **Swagger UI** is available at `/swagger-ui.html`.
+> **Swagger UI** is available at `/swagger-ui.html` or in the raw file `/docs/openapi.yaml`.
+
 
 ---
 
 ## Testing
-- Unit & Slice Tests
+- **Unit & Slice Tests**
 ```bash
 mvn test 
 ```
-- TODO: Integration tests
+- **Integration Tests** (PostgreSQL via Testcontainers + CoinCap stubs via WireMock)
+
+These run under `@SpringBootTest` and execute when you do a full verify:
+```bash
+mvn verify
+```
 
 ---
 
