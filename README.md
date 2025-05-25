@@ -1,5 +1,6 @@
 # Crypto Wallet Management
 
+[![CI](https://github.com/ric-ram/cryptowallet/actions/workflows/ci.yml/badge.svg)](https://github.com/ric-ram/cryptowallet/actions/workflows/ci.yml)
 
 
 > **Elevator pitch:**  
