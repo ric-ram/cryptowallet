@@ -3,7 +3,6 @@
 [![CI](https://github.com/ric-ram/cryptowallet/actions/workflows/ci.yml/badge.svg)](https://github.com/ric-ram/cryptowallet/actions/workflows/ci.yml)
 
 
-> **Elevator pitch:**  
 > Crypto Wallet Management is a Spring Boot microservice that lets users  
 > create and manage a wallet of cryptocurrency holdings, automatically fetch  
 > live prices via the CoinCap API, compute real-time valuation, and simulate  
@@ -21,7 +20,6 @@
 - [API Endpoints](#api-endpoints)
 - [Testing](#testing)
 - [Postman Collection](#postman-collection)
-- [Future Improvements](#future-improvements)
 - [License](#license)
 
 ---
@@ -100,7 +98,7 @@ coincap.api.base-url=https://api.coincap.io
 coincap.api.key=${COINCAP_API_KEY}
 
 # Price polling (ms)
-app.prices.poll-rate-ms=60000
+app.prices.poll-rate-ms=300000
 ```
 
 ---
@@ -133,9 +131,9 @@ mvn verify
 ---
 
 ## Postman Collection
-Import collection from:
- TODO: postman collection file
-It includes ready-to-run examples for all endpoints
+Import collection from
+`/docs/CryptoWallet.postman_collection.json`.
+It includes ready-to-run examples for all available endpoints
 
 --- 
 

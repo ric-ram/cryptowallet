@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.ricram</groupId>
 	<artifactId>cryptowallet</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.1</version>
 	<name>cryptowallet</name>
 	<description>Coding Challenge for Swiss Post</description>
 	<url/>
