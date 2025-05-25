@@ -2,6 +2,7 @@ package com.ricram.cryptowallet;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Slf4j
 public class AppIntegrationTest {
 
+        private static final WireMockServer wireMock = new WireMockServer(
+                WireMockConfiguration.options().dynamicPort()
+        );
+        static {
+                wireMock.start();
+        }
+
         @Container
         static PostgreSQLContainer<?> pg =
                 new PostgreSQLContainer<>("postgres:16-alpine")
@@ -51,14 +59,12 @@ public class AppIntegrationTest {
         @Autowired
         private TestRestTemplate rest;
 
-        @InjectWireMock
-        private WireMockServer wireMockServer;
-
         @DynamicPropertySource
         static void dbProps(DynamicPropertyRegistry reg) {
                 reg.add("spring.datasource.url", pg::getJdbcUrl);
                 reg.add("spring.datasource.username", pg::getUsername);
                 reg.add("spring.datasource.password", pg::getPassword);
+                reg.add("coincap.api.base-url",      wireMock::baseUrl);
         }
 
         @BeforeAll
@@ -71,9 +77,9 @@ public class AppIntegrationTest {
 
         @BeforeEach
         void stubCoinCap() {
-                WireMock.configureFor(wireMockServer.port());
+                WireMock.configureFor(wireMock.port());
 
-                wireMockServer.resetAll();
+                wireMock.resetAll();
 
                 // Search by Symbol stub
                 stubFor(get(urlPathEqualTo("/v3/assets"))
